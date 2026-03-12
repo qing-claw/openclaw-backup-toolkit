@@ -1,5 +1,7 @@
 # OpenClaw Backup Toolkit
 
+[中文说明 / Chinese README](./README.zh-CN.md)
+
 Practical backup and restore scripts for multi-agent, multi-workspace OpenClaw setups.
 
 This project exists for one simple reason:
