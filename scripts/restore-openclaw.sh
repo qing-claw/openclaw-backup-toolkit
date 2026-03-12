@@ -9,16 +9,16 @@ usage() {
   cat <<EOF
 Usage:
   $0 --list
-  $0 [--prune-extra] --config-only <snapshot>
-  $0 [--prune-extra] --agent <agentId> <snapshot>
-  $0 [--prune-extra] --full <snapshot>
+  $0 [--keep-extra] --config-only <snapshot>
+  $0 [--keep-extra] --agent <agentId> <snapshot>
+  $0 [--keep-extra] --full <snapshot>
 
 Examples:
   $0 --list
   $0 --config-only 20260312-193000
   $0 --agent chuxian 20260312-193000
   $0 --full 20260312-193000
-  $0 --prune-extra --full 20260312-193000
+  $0 --keep-extra --full 20260312-193000
 EOF
 }
 
@@ -29,16 +29,6 @@ copy_back() {
   mkdir -p "$(dirname "$dst")"
   rm -rf "$dst"
   cp -a "$src" "$dst"
-}
-
-confirm_prune() {
-  local scope="$1"
-  printf 'Prune extra files not present in snapshot for %s? [y/N] ' "$scope" >&2
-  read -r reply
-  case "$reply" in
-    y|Y|yes|YES) return 0 ;;
-    *) return 1 ;;
-  esac
 }
 
 remove_if_extra() {
@@ -100,9 +90,9 @@ if [ "${1:-}" = "--list" ]; then
   exit 0
 fi
 
-PRUNE_EXTRA=0
-if [ "${1:-}" = "--prune-extra" ]; then
-  PRUNE_EXTRA=1
+PRUNE_EXTRA=1
+if [ "${1:-}" = "--keep-extra" ]; then
+  PRUNE_EXTRA=0
   shift
 fi
 
@@ -114,7 +104,6 @@ case "$MODE" in
     [ -n "$SNAP" ] || { usage; exit 2; }
     SRC="$BACKUP_ROOT/$SNAP"
     [ -d "$SRC" ] || { echo "snapshot not found: $SNAP" >&2; exit 1; }
-    if [ "$PRUNE_EXTRA" = "1" ]; then confirm_prune "config-only restore" || PRUNE_EXTRA=0; fi
     PRE_SNAPSHOT="$(snapshot_current config-only)"
     copy_back "$SRC/openclaw.json" "$ROOT/openclaw.json"
     copy_back "$SRC/exec-approvals.json" "$ROOT/exec-approvals.json"
@@ -134,7 +123,6 @@ case "$MODE" in
     [ -n "$AGENT" ] && [ -n "$SNAP" ] || { usage; exit 2; }
     SRC="$BACKUP_ROOT/$SNAP"
     [ -d "$SRC" ] || { echo "snapshot not found: $SNAP" >&2; exit 1; }
-    if [ "$PRUNE_EXTRA" = "1" ]; then confirm_prune "agent restore" || PRUNE_EXTRA=0; fi
     PRE_SNAPSHOT="$(snapshot_current agent "$AGENT")"
     shopt -s nullglob
     for d in "$SRC"/workspace*; do
@@ -168,7 +156,6 @@ case "$MODE" in
     [ -n "$SNAP" ] || { usage; exit 2; }
     SRC="$BACKUP_ROOT/$SNAP"
     [ -d "$SRC" ] || { echo "snapshot not found: $SNAP" >&2; exit 1; }
-    if [ "$PRUNE_EXTRA" = "1" ]; then confirm_prune "full restore" || PRUNE_EXTRA=0; fi
     PRE_SNAPSHOT="$(snapshot_current full)"
     [ -e "$SRC/openclaw.json" ] && copy_back "$SRC/openclaw.json" "$ROOT/openclaw.json"
     [ -e "$SRC/exec-approvals.json" ] && copy_back "$SRC/exec-approvals.json" "$ROOT/exec-approvals.json"

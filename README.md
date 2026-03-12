@@ -38,6 +38,7 @@ What has been checked so far:
 - backup scripts were exercised on a live environment
 - cold backup produced a real archive successfully
 - restore flows include automatic pre-restore snapshots
+- default restore pruning is covered in isolated smoke tests
 - scripts pass `bash -n`
 - isolated end-to-end smoke tests run against a temporary fake `.openclaw` tree (not the live environment)
 
@@ -64,6 +65,9 @@ bash scripts/backup-openclaw-cold.sh
 
 # restore config from a snapshot (automatically creates a pre-restore snapshot first)
 bash scripts/restore-openclaw.sh --config-only <snapshot>
+
+# if you want overwrite-without-deleting-extra-files
+bash scripts/restore-openclaw.sh --keep-extra --full <snapshot>
 ```
 
 ### 1. Config-only
@@ -97,11 +101,14 @@ All restore flows in this toolkit take a **pre-restore snapshot by default**.
 
 That means if you roll back and then realize you picked the wrong snapshot, you still have a path back to the exact pre-restore state.
 
-Restore behavior is **conservative by default**:
+Restore behavior is **pruning by default**:
 - it overwrites files that exist in the target snapshot
-- it does **not** automatically delete extra files that appeared later
+- it also removes extra files that are not present in the target snapshot
 
-If you want cleanup behavior, use `--prune-extra`. The script will ask for confirmation before deleting snapshot-external files.
+Before any restore, the toolkit first creates a **pre-restore snapshot** of the current state.
+That is the safety net that makes default-pruning reasonable.
+
+If you want a less aggressive restore, use `--keep-extra`.
 
 Cold backups also emit a small `manifest.txt` file that records metadata such as:
 - timestamp

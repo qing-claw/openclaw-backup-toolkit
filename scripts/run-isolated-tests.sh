@@ -56,9 +56,11 @@ echo 'extra' > "$FAKE_ROOT/workspace-extra/file.txt"
 bash "$PROJECT_ROOT/scripts/restore-openclaw.sh" --full "$(basename "$SNAP_FULL")" >/dev/null
 grep -q 'agent demo' "$FAKE_ROOT/agents/demo/info.txt"
 grep -q 'note a' "$FAKE_ROOT/workspace-demo/memory/2026-03-12.md"
-[ -e "$FAKE_ROOT/workspace-extra/file.txt" ]
-printf 'y\n' | bash "$PROJECT_ROOT/scripts/restore-openclaw.sh" --prune-extra --full "$(basename "$SNAP_FULL")" >/dev/null
 [ ! -e "$FAKE_ROOT/workspace-extra" ]
+mkdir -p "$FAKE_ROOT/workspace-extra"
+echo 'extra2' > "$FAKE_ROOT/workspace-extra/file.txt"
+bash "$PROJECT_ROOT/scripts/restore-openclaw.sh" --keep-extra --full "$(basename "$SNAP_FULL")" >/dev/null
+[ -e "$FAKE_ROOT/workspace-extra/file.txt" ]
 
 # cold backup + restore
 COLD_ARCHIVE="$(bash "$PROJECT_ROOT/scripts/backup-openclaw-cold.sh")"
