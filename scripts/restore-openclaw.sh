@@ -9,15 +9,16 @@ usage() {
   cat <<EOF
 Usage:
   $0 --list
-  $0 --config-only <snapshot>
-  $0 --agent <agentId> <snapshot>
-  $0 --full <snapshot>
+  $0 [--prune-extra] --config-only <snapshot>
+  $0 [--prune-extra] --agent <agentId> <snapshot>
+  $0 [--prune-extra] --full <snapshot>
 
 Examples:
   $0 --list
   $0 --config-only 20260312-193000
   $0 --agent chuxian 20260312-193000
   $0 --full 20260312-193000
+  $0 --prune-extra --full 20260312-193000
 EOF
 }
 
@@ -28,6 +29,24 @@ copy_back() {
   mkdir -p "$(dirname "$dst")"
   rm -rf "$dst"
   cp -a "$src" "$dst"
+}
+
+confirm_prune() {
+  local scope="$1"
+  printf 'Prune extra files not present in snapshot for %s? [y/N] ' "$scope" >&2
+  read -r reply
+  case "$reply" in
+    y|Y|yes|YES) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+remove_if_extra() {
+  local dst="$1"
+  local src="$2"
+  if [ "$PRUNE_EXTRA" = "1" ] && [ -e "$dst" ] && [ ! -e "$src" ]; then
+    rm -rf "$dst"
+  fi
 }
 
 snapshot_current() {
@@ -81,6 +100,12 @@ if [ "${1:-}" = "--list" ]; then
   exit 0
 fi
 
+PRUNE_EXTRA=0
+if [ "${1:-}" = "--prune-extra" ]; then
+  PRUNE_EXTRA=1
+  shift
+fi
+
 MODE="${1:-}"
 PRE_SNAPSHOT=""
 case "$MODE" in
@@ -89,11 +114,15 @@ case "$MODE" in
     [ -n "$SNAP" ] || { usage; exit 2; }
     SRC="$BACKUP_ROOT/$SNAP"
     [ -d "$SRC" ] || { echo "snapshot not found: $SNAP" >&2; exit 1; }
+    if [ "$PRUNE_EXTRA" = "1" ]; then confirm_prune "config-only restore" || PRUNE_EXTRA=0; fi
     PRE_SNAPSHOT="$(snapshot_current config-only)"
     copy_back "$SRC/openclaw.json" "$ROOT/openclaw.json"
     copy_back "$SRC/exec-approvals.json" "$ROOT/exec-approvals.json"
     copy_back "$SRC/skills" "$ROOT/skills"
     copy_back "$SRC/extensions" "$ROOT/extensions"
+    remove_if_extra "$ROOT/exec-approvals.json" "$SRC/exec-approvals.json"
+    remove_if_extra "$ROOT/skills" "$SRC/skills"
+    remove_if_extra "$ROOT/extensions" "$SRC/extensions"
     if [ -e "$SRC/acpx-config.json" ]; then
       mkdir -p "$HOME/.acpx"
       cp -a "$SRC/acpx-config.json" "$HOME/.acpx/config.json"
@@ -105,6 +134,7 @@ case "$MODE" in
     [ -n "$AGENT" ] && [ -n "$SNAP" ] || { usage; exit 2; }
     SRC="$BACKUP_ROOT/$SNAP"
     [ -d "$SRC" ] || { echo "snapshot not found: $SNAP" >&2; exit 1; }
+    if [ "$PRUNE_EXTRA" = "1" ]; then confirm_prune "agent restore" || PRUNE_EXTRA=0; fi
     PRE_SNAPSHOT="$(snapshot_current agent "$AGENT")"
     shopt -s nullglob
     for d in "$SRC"/workspace*; do
@@ -120,12 +150,25 @@ case "$MODE" in
     shopt -u nullglob
     copy_back "$SRC/agents/$AGENT" "$ROOT/agents/$AGENT"
     copy_back "$SRC/agents/${AGENT^}" "$ROOT/agents/${AGENT^}"
+    remove_if_extra "$ROOT/agents/$AGENT" "$SRC/agents/$AGENT"
+    remove_if_extra "$ROOT/agents/${AGENT^}" "$SRC/agents/${AGENT^}"
+    shopt -s nullglob
+    for d in "$ROOT"/workspace*; do
+      base="$(basename "$d")"
+      case "$base" in
+        "workspace-$AGENT"|"workspace-${AGENT^}")
+          remove_if_extra "$d" "$SRC/$base"
+          ;;
+      esac
+    done
+    shopt -u nullglob
     ;;
   --full)
     SNAP="${2:-}"
     [ -n "$SNAP" ] || { usage; exit 2; }
     SRC="$BACKUP_ROOT/$SNAP"
     [ -d "$SRC" ] || { echo "snapshot not found: $SNAP" >&2; exit 1; }
+    if [ "$PRUNE_EXTRA" = "1" ]; then confirm_prune "full restore" || PRUNE_EXTRA=0; fi
     PRE_SNAPSHOT="$(snapshot_current full)"
     [ -e "$SRC/openclaw.json" ] && copy_back "$SRC/openclaw.json" "$ROOT/openclaw.json"
     [ -e "$SRC/exec-approvals.json" ] && copy_back "$SRC/exec-approvals.json" "$ROOT/exec-approvals.json"
@@ -137,6 +180,15 @@ case "$MODE" in
     done
     shopt -u nullglob
     [ -e "$SRC/agents" ] && copy_back "$SRC/agents" "$ROOT/agents"
+    remove_if_extra "$ROOT/exec-approvals.json" "$SRC/exec-approvals.json"
+    remove_if_extra "$ROOT/skills" "$SRC/skills"
+    remove_if_extra "$ROOT/extensions" "$SRC/extensions"
+    remove_if_extra "$ROOT/agents" "$SRC/agents"
+    shopt -s nullglob
+    for d in "$ROOT"/workspace*; do
+      remove_if_extra "$d" "$SRC/$(basename "$d")"
+    done
+    shopt -u nullglob
     if [ -e "$SRC/acpx-config.json" ]; then
       mkdir -p "$HOME/.acpx"
       cp -a "$SRC/acpx-config.json" "$HOME/.acpx/config.json"

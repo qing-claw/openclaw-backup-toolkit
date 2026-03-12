@@ -97,6 +97,12 @@ All restore flows in this toolkit take a **pre-restore snapshot by default**.
 
 That means if you roll back and then realize you picked the wrong snapshot, you still have a path back to the exact pre-restore state.
 
+Restore behavior is **conservative by default**:
+- it overwrites files that exist in the target snapshot
+- it does **not** automatically delete extra files that appeared later
+
+If you want cleanup behavior, use `--prune-extra`. The script will ask for confirmation before deleting snapshot-external files.
+
 Cold backups also emit a small `manifest.txt` file that records metadata such as:
 - timestamp
 - archive path and name

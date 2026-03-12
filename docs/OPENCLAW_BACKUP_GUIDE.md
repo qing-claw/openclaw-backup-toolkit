@@ -63,6 +63,18 @@ bash scripts/restore-openclaw-cold.sh --restore <archive.tar.gz>
 
 所有恢复动作都默认会先保存当前快照，避免回退之后发现不对、却无法回到恢复前状态。
 
+默认恢复策略是**保守覆盖**：
+- 会覆盖快照里已有的目标
+- 不会自动删除恢复点之外后来新增的文件
+
+如果你明确希望清理这些“额外文件”，可以使用：
+
+```bash
+bash scripts/restore-openclaw.sh --prune-extra --full <snapshot>
+```
+
+脚本会先询问确认，再执行删除。
+
 ## 目录约定
 
 - 备份目录：`~/.openclaw/backups`
