@@ -49,6 +49,16 @@ bash scripts/restore-openclaw-cold.sh --list
 bash scripts/restore-openclaw-cold.sh --restore <archive.tar.gz>
 ```
 
+冷备会额外生成一个 manifest，记录：
+- 时间戳
+- 归档名
+- 归档大小
+- SHA256
+- workspace 数量
+- agent 数量
+- OpenClaw 版本
+- 系统与架构
+
 ## 恢复安全性
 
 所有恢复动作都默认会先保存当前快照，避免回退之后发现不对、却无法回到恢复前状态。

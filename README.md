@@ -2,9 +2,13 @@
 
 Practical backup and restore scripts for multi-agent, multi-workspace OpenClaw setups.
 
-## Why this exists
+This project exists for one simple reason:
 
-OpenClaw now includes built-in backup commands, which is great. This toolkit is meant to complement that with a few operator-focused workflows that are especially useful in shared or experimental environments:
+> if you are using OpenClaw as an evolving system, backup and rollback are not optional.
+
+OpenClaw already has built-in backup support. This toolkit complements that with more operator-focused workflows for shared, experimental, or multi-agent environments.
+
+## What this toolkit adds
 
 - config-only backup / restore
 - runtime snapshot backup / restore
@@ -12,8 +16,18 @@ OpenClaw now includes built-in backup commands, which is great. This toolkit is 
 - pre-restore safety snapshots by default
 - lightweight audit logs
 - agent-scoped restore flows
+- cold-backup manifests with SHA256 and archive metadata
 
 This project is aimed at people who are treating OpenClaw like a small evolving system instead of a single-user toy setup.
+
+## Who this is for
+
+This is especially useful if you have any of these:
+- multiple agents
+- multiple workspaces
+- shared or semi-shared OpenClaw environments
+- risky config iteration
+- a strong desire to be able to undo mistakes
 
 ## Status
 
@@ -35,6 +49,22 @@ What has **not** been fully proven yet:
 So: this is **reasonable and practical**, but not yet something I would call battle-hardened.
 
 ## Backup layers
+
+### Quick examples
+
+```bash
+# before editing global config
+bash scripts/backup-openclaw.sh config
+
+# preserve current runtime state
+bash scripts/backup-openclaw.sh all
+
+# create a cold backup before upgrades / risky changes
+bash scripts/backup-openclaw-cold.sh
+
+# restore config from a snapshot (automatically creates a pre-restore snapshot first)
+bash scripts/restore-openclaw.sh --config-only <snapshot>
+```
 
 ### 1. Config-only
 Use before editing `openclaw.json`, bindings, channels, skills, or extensions.
@@ -66,6 +96,16 @@ bash scripts/restore-openclaw-cold.sh --restore <archive.tar.gz>
 All restore flows in this toolkit take a **pre-restore snapshot by default**.
 
 That means if you roll back and then realize you picked the wrong snapshot, you still have a path back to the exact pre-restore state.
+
+Cold backups also emit a small `manifest.txt` file that records metadata such as:
+- timestamp
+- archive path and name
+- archive size
+- SHA256 checksum
+- workspace count
+- agent count
+- OpenClaw version
+- host OS / architecture
 
 ## Directory expectations
 

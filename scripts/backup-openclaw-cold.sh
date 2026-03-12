@@ -12,15 +12,9 @@ mkdir -p "$BACKUP_ROOT" "$AUDIT_DIR"
 
 WORKSPACE_COUNT="$(find "$ROOT" -maxdepth 1 -mindepth 1 -type d -name 'workspace*' | wc -l | tr -d ' ')"
 AGENT_COUNT="$(find "$ROOT/agents" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
-
-{
-  echo "timestamp=$TS"
-  echo "archive=$ARCHIVE"
-  echo "root=$ROOT"
-  echo "contents=.openclaw (entire tree, excluding live sockets and cold-backup archives)"
-  echo "workspaces=$WORKSPACE_COUNT"
-  echo "agents=$AGENT_COUNT"
-} > "$MANIFEST"
+OPENCLAW_VERSION="$(openclaw --version 2>/dev/null | head -n 1 || echo unknown)"
+SYSTEM_NAME="$(uname -s 2>/dev/null || echo unknown)"
+SYSTEM_ARCH="$(uname -m 2>/dev/null || echo unknown)"
 
 (
   cd "$HOME"
@@ -33,11 +27,32 @@ AGENT_COUNT="$(find "$ROOT/agents" -maxdepth 1 -mindepth 1 -type d 2>/dev/null |
     -czf "$ARCHIVE" .openclaw
 )
 
+ARCHIVE_SIZE_BYTES="$(wc -c < "$ARCHIVE" | tr -d ' ')"
+ARCHIVE_SHA256="$(shasum -a 256 "$ARCHIVE" | awk '{print $1}')"
+
+{
+  echo "timestamp=$TS"
+  echo "mode=cold-full"
+  echo "archive=$ARCHIVE"
+  echo "archive_name=$(basename "$ARCHIVE")"
+  echo "archive_size_bytes=$ARCHIVE_SIZE_BYTES"
+  echo "archive_sha256=$ARCHIVE_SHA256"
+  echo "root=$ROOT"
+  echo "contents=.openclaw (entire tree, excluding live sockets and cold-backup archives)"
+  echo "workspaces=$WORKSPACE_COUNT"
+  echo "agents=$AGENT_COUNT"
+  echo "openclaw_version=$OPENCLAW_VERSION"
+  echo "system=$SYSTEM_NAME"
+  echo "arch=$SYSTEM_ARCH"
+} > "$MANIFEST"
+
 cat >> "$AUDIT_DIR/backup-log.md" <<EOF
 ## $TS
 - mode: cold-full
 - path: $ARCHIVE
 - manifest: $MANIFEST
+- sha256: $ARCHIVE_SHA256
+- size_bytes: $ARCHIVE_SIZE_BYTES
 EOF
 
 echo "$ARCHIVE"
