@@ -1,0 +1,113 @@
+# OpenClaw Backup Toolkit
+
+Practical backup and restore scripts for multi-agent, multi-workspace OpenClaw setups.
+
+## Why this exists
+
+OpenClaw now includes built-in backup commands, which is great. This toolkit is meant to complement that with a few operator-focused workflows that are especially useful in shared or experimental environments:
+
+- config-only backup / restore
+- runtime snapshot backup / restore
+- cold backup of the entire `~/.openclaw`
+- pre-restore safety snapshots by default
+- lightweight audit logs
+- agent-scoped restore flows
+
+This project is aimed at people who are treating OpenClaw like a small evolving system instead of a single-user toy setup.
+
+## Status
+
+Early but usable.
+
+What has been checked so far:
+- scripts were written against a real OpenClaw installation
+- backup scripts were exercised on a live environment
+- cold backup produced a real archive successfully
+- restore flows include automatic pre-restore snapshots
+- scripts pass `bash -n`
+- isolated end-to-end smoke tests run against a temporary fake `.openclaw` tree (not the live environment)
+
+What has **not** been fully proven yet:
+- large-scale or long-history restore drills
+- cross-platform validation beyond macOS
+- compatibility across many OpenClaw versions
+
+So: this is **reasonable and practical**, but not yet something I would call battle-hardened.
+
+## Backup layers
+
+### 1. Config-only
+Use before editing `openclaw.json`, bindings, channels, skills, or extensions.
+
+```bash
+bash scripts/backup-openclaw.sh config
+bash scripts/restore-openclaw.sh --config-only <snapshot>
+```
+
+### 2. Runtime-full
+Use when you want to preserve the current working state of config + workspaces + agents.
+
+```bash
+bash scripts/backup-openclaw.sh all
+bash scripts/restore-openclaw.sh --full <snapshot>
+```
+
+### 3. Cold-full
+Use before upgrades, major experiments, or as disaster-recovery insurance.
+
+```bash
+bash scripts/backup-openclaw-cold.sh
+bash scripts/restore-openclaw-cold.sh --list
+bash scripts/restore-openclaw-cold.sh --restore <archive.tar.gz>
+```
+
+## Important safety rule
+
+All restore flows in this toolkit take a **pre-restore snapshot by default**.
+
+That means if you roll back and then realize you picked the wrong snapshot, you still have a path back to the exact pre-restore state.
+
+## Directory expectations
+
+By default the scripts assume:
+
+- OpenClaw root: `~/.openclaw`
+- audit logs: `~/.openclaw/audit`
+- snapshots: `~/.openclaw/backups`
+
+You can override the root with:
+
+```bash
+OPENCLAW_ROOT=/path/to/.openclaw bash scripts/backup-openclaw.sh all
+```
+
+## Included files
+
+- `scripts/backup-openclaw.sh`
+- `scripts/restore-openclaw.sh`
+- `scripts/backup-openclaw-cold.sh`
+- `scripts/restore-openclaw-cold.sh`
+- `docs/OPENCLAW_BACKUP_GUIDE.md`
+
+## Relationship to official backup support
+
+Official OpenClaw backup is still the primary built-in path:
+
+```bash
+openclaw backup create --only-config --verify
+openclaw backup create --verify
+openclaw backup verify <archive>
+```
+
+This toolkit is intentionally complementary. It focuses more on operator ergonomics and layered restore workflows.
+
+## Suggested usage pattern
+
+- before config edits → config-only backup
+- before agent/workspace changes → runtime snapshot backup
+- before upgrades / risky changes → cold backup
+- before every restore → automatic pre-restore snapshot already happens
+
+## License
+
+MIT
